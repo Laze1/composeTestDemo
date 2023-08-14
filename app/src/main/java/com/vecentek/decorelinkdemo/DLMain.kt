@@ -7,6 +7,7 @@ import com.vecentek.decorelink.DLConfigure
 import com.vecentek.decorelink.DLEngine
 import com.vecentek.decorelink.base.bean.ScanDevice
 import com.vecentek.decorelink.base.util.LogUtil
+import com.vecentek.decorelink.base.util.Sha256Util.getPairCode
 import com.vecentek.decorelink.base.util.TimeUtils
 import com.vecentek.decorelink.ble.interfaces.BleScanResult
 import com.vecentek.decorelink.sdk.bean.keys.DLICCEKey
@@ -71,8 +72,13 @@ class DLMain private constructor(){
             log.onLog("蓝牙状态：${it.statusName}")
         }
         DLEngine.instance.bleBondState {
-            LogUtil.log("蓝牙绑定状态：${it.statusName}")
+            LogUtil.log("蓝牙绑定状态：${it.statusName}-${it.bondStatus}")
             log.onLog("蓝牙绑定状态：${it.statusName}")
+            if (it.bondStatus == Constants.BLE_SHOW_PAIR_CODE) {
+                //显示配对码 或直接在连接前通过判断是否配对来显示
+                val code = DLEngine.instance.getPairCode(it)
+                log.onLog("配对码：$code")
+            }
         }
         DLEngine.instance.setPublicCallBack(object : ApiPublicCallBack {
             override fun bleRemindMsg(carRemind: CarRemindCallBackInfo) {
