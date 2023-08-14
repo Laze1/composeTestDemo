@@ -26,6 +26,9 @@ class DLMain private constructor(){
     //钥匙
     private var key:DLICCEKey? = null
 
+    //设备
+    private var device:ScanDevice? = null
+
     //单例模式
     companion object {
         val instance by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -63,21 +66,18 @@ class DLMain private constructor(){
 
     fun observeBleStatus(){
         log.onLog("监听开始")
-        DLEngine.instance.bleVersionNegotiationPass {
-            log.onLog("版本协商")
-        }
         DLEngine.instance.bleManagerState {
             LogUtil.log("蓝牙状态：${it.statusName}")
-            log.onLog("蓝牙状态：$it")
+            log.onLog("蓝牙状态：${it.statusName}")
         }
         DLEngine.instance.bleBondState {
             LogUtil.log("蓝牙绑定状态：${it.statusName}")
-            log.onLog("蓝牙绑定状态：$it")
+            log.onLog("蓝牙绑定状态：${it.statusName}")
         }
         DLEngine.instance.setPublicCallBack(object : ApiPublicCallBack {
             override fun bleRemindMsg(carRemind: CarRemindCallBackInfo) {
-                LogUtil.log("bleVehicleState -> ${carRemind.message}")
-                log.onLog("bleVehicleState -> ${carRemind.message}")
+                LogUtil.log("bleVehicleState -> ${carRemind.cmd}")
+                log.onLog("bleVehicleState -> ${carRemind.cmd}")
             }
 
             override fun bleVehicleControlStateNotify(result: DLResult) {
@@ -85,22 +85,25 @@ class DLMain private constructor(){
             }
 
             override fun bleVehicleState(result: VehicleStateCallBackInfo) {
-                LogUtil.log("bleVehicleState -> ${result.message}")
-                log.onLog("bleVehicleState -> ${result.message}")
+                LogUtil.log("bleVehicleState -> ${result.type} -${Thread.currentThread().name}")
             }
 
             override fun whiteListOffLineBreathAvailableTimes(result: DLResult) {
                 logDL(result, "whiteListOffLineBreathAvailableTimes")
             }
         })
-        log.onLog("监听完成")
+        log.onLog("监听完成-${Thread.currentThread().name}")
     }
 
     fun bleScanAndConnect(){
+        log.onLog("开始扫描")
         DLEngine.instance.startBleScan(object : BleScanResult {
             override fun onScanResult(r: ScanDevice) {
+                LogUtil.log("扫描结果：${r.vin}")
                 if (r.vin.isNotEmpty() && vin.contains(r.vin,true)) {
                     stopBleScan()
+                    log.onLog("开始连接${r.vin}")
+                    device = r
                     connectBle(r) {
                         LogUtil.log("蓝牙连接回调")
                     }
@@ -184,9 +187,38 @@ class DLMain private constructor(){
     }
 
     fun activationKey(){
-        DLEngine.instance.activationKey {
-            logDL(it, "activationKey")
+        DLEngine.instance.bleVersionNegotiationPass {
+            DLEngine.instance.activationKey { result ->
+                DLEngine.instance.bleVersionNegotiationPass(null)
+                DLEngine.instance.disConnectBle {
+                    if (result.flag == Constants.SUCCESS) {
+                        Thread.sleep(2000)
+                        DLEngine.instance.syncKeys {
+                            logDL(it, "syncKeys")
+                            if (it.flag == Constants.SUCCESS) {
+                                DLICCEKey.parseKeys(it.data).apply {
+                                    if (size > 0) {
+                                        this.forEach { key1 ->
+                                            log.onLog("钥匙：${key1.keyID}，${key1.vin}")
+                                            log.onKey(key1)
+                                        }
+                                        key = this[0]
+                                        DLEngine.instance.selectKey(key!!.keyID) {
+                                            logDL(it, "selectKey:${key!!.keyID}")
+                                            log.onSelect(key!!.keyID)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+        DLEngine.instance.disConnectBle{
+            DLEngine.instance.connectBleDevice(device, null)
+        }
+
     }
 
     fun revokeKey(){
@@ -246,7 +278,7 @@ class DLMain private constructor(){
     }
 
     fun setSelfCalibrationLevel(){
-        DLEngine.instance.setSelfCalibrationLevel(5) {
+        DLEngine.instance.setSelfCalibrationLevel(1) {
             logDL(it, "setSelfCalibrationLevel")
         }
     }

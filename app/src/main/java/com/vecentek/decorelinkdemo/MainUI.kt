@@ -22,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vecentek.decorelink.sdk.bean.keys.DLICCEKey
@@ -41,7 +40,8 @@ fun Content() {
             if (logList.size>30) {
                 logList.clear()
             }
-            logList.add("$info【${Thread.currentThread().name}】")
+//            logList.add("$info【${Thread.currentThread().name}】")
+            logList.add("$info")
         }
 
         override fun onKey(key: DLICCEKey) {
