@@ -257,7 +257,7 @@ class DLMain private constructor(){
 
     fun vehicleControl(){
         DLEngine.instance.vehicleControl(1, 0) {
-            logDL(it, "deleteKey")
+            logDL(it, "vehicleControl")
         }
     }
 
@@ -286,6 +286,12 @@ class DLMain private constructor(){
     fun setSelfCalibrationLevel(){
         DLEngine.instance.setSelfCalibrationLevel(1) {
             logDL(it, "setSelfCalibrationLevel")
+        }
+    }
+
+    fun writeNFC(){
+        DLEngine.instance.writeNFC {
+            logDL(it, "writeNFC")
         }
     }
 

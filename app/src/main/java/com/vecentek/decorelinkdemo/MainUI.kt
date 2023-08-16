@@ -161,6 +161,10 @@ fun Content() {
                     MyButton(msg = "自标定等级") {
                         DLMain.instance.setSelfCalibrationLevel()
                     }
+
+                    MyButton(msg = "writeNFC") {
+                        DLMain.instance.writeNFC()
+                    }
                 }
             }
 
