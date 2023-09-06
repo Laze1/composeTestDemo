@@ -33,8 +33,10 @@ fun Content() {
     val logList = remember { mutableStateListOf<String>() }
     val keyList = remember { mutableStateListOf<DLICCEKey>() }
     var selectKey by remember { mutableStateOf("") }
+    var connectKey by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
+    var num by remember { mutableStateOf(0) }
     DLMain.instance.observeLog(object : DLMain.LogResult {
         override fun onLog(info: String) {
             if (logList.size>30) {
@@ -44,13 +46,21 @@ fun Content() {
             logList.add("$info")
         }
 
-        override fun onKey(key: DLICCEKey) {
+        override fun onKey(keys: List<DLICCEKey>) {
             keyList.clear()
-            keyList.add(key)
+            keyList.addAll(keys)
         }
 
         override fun onSelect(keyId: String) {
             selectKey = keyId
+        }
+
+        override fun onConnect(isConnect: Boolean, vin :String) {
+            connectKey = if (isConnect) { vin }else{ "" }
+        }
+
+        override fun onHeartBeat() {
+            num++
         }
 
 
@@ -83,6 +93,9 @@ fun Content() {
                             .clickable { DLMain.instance.selectKey(it.keyID) }
                             .padding(10.dp)
                     ) {
+                        if (it.vin.contains(connectKey) && connectKey.isNotEmpty()){
+                            Text(text = "$num 已连接   ", color = Color.Red)
+                        }
                         if (selectKey == it.keyID){
                             Text(text = "已选择   ", color = Color.Green)
                         }

@@ -1,21 +1,18 @@
 package com.vecentek.decorelinkdemo
 
 import android.annotation.SuppressLint
-import androidx.compose.runtime.remember
 import com.vecentek.decorelink.Constants
 import com.vecentek.decorelink.DLConfigure
 import com.vecentek.decorelink.DLEngine
 import com.vecentek.decorelink.base.bean.ScanDevice
 import com.vecentek.decorelink.base.util.LogUtil
-import com.vecentek.decorelink.base.util.Sha256Util.getPairCode
 import com.vecentek.decorelink.base.util.TimeUtils
 import com.vecentek.decorelink.ble.interfaces.BleScanResult
 import com.vecentek.decorelink.sdk.bean.keys.DLICCEKey
 import com.vecentek.decorelink.sdk.callback.ApiPublicCallBack
-import com.vecentek.decorelink.sdk.callback.info.CarRemindCallBackInfo
-import com.vecentek.decorelink.sdk.callback.info.DLResult
-import com.vecentek.decorelink.sdk.callback.info.VehicleStateCallBackInfo
-import java.nio.ByteBuffer
+import com.vecentek.decorelink.sdk.callback.CarRemindCallBackInfo
+import com.vecentek.decorelink.sdk.callback.DLResult
+import com.vecentek.decorelink.sdk.callback.VehicleStateCallBackInfo
 
 @SuppressLint("MissingPermission")
 class DLMain private constructor(){
@@ -41,8 +38,10 @@ class DLMain private constructor(){
 
     interface LogResult{
         fun onLog(info:String)
-        fun onKey(key:DLICCEKey)
+        fun onKey(keys:List<DLICCEKey>)
         fun onSelect(keyId: String)
+        fun onConnect(isConnect:Boolean, vin :String)
+        fun onHeartBeat()
     }
 
     fun observeLog(result:LogResult){
@@ -68,8 +67,14 @@ class DLMain private constructor(){
     fun observeBleStatus(){
         log.onLog("监听开始")
         DLEngine.instance.bleManagerState {
+            it.status
             LogUtil.log("蓝牙状态：${it.statusName}")
             log.onLog("蓝牙状态：${it.statusName}")
+            if ( it.status ==Constants.STATUS_CONNECTED ){
+                log.onConnect(true, it.vin)
+            }else if ( it.status == Constants.STATUS_DISCONNECTED ){
+                log.onConnect(false, it.vin)
+            }
         }
         DLEngine.instance.bleBondState {
             LogUtil.log("蓝牙绑定状态：${it.statusName}-${it.bondStatus}")
@@ -82,8 +87,8 @@ class DLMain private constructor(){
         }
         DLEngine.instance.setPublicCallBack(object : ApiPublicCallBack {
             override fun bleRemindMsg(carRemind: CarRemindCallBackInfo) {
-                LogUtil.log("bleVehicleState -> ${carRemind.cmd}")
-                log.onLog("bleVehicleState -> ${carRemind.cmd}")
+                LogUtil.log("bleVehicleState ->车辆提醒： ${carRemind.cmd}")
+                log.onLog("bleVehicleState ->车辆提醒： ${carRemind.cmd}")
             }
 
             override fun bleVehicleControlStateNotify(result: DLResult) {
@@ -91,7 +96,8 @@ class DLMain private constructor(){
             }
 
             override fun bleVehicleState(result: VehicleStateCallBackInfo) {
-                LogUtil.log("bleVehicleState -> ${result.type} -${Thread.currentThread().name}")
+                LogUtil.log("bleVehicleState -> 心跳")
+                log.onHeartBeat()
             }
 
             override fun whiteListOffLineBreathAvailableTimes(result: DLResult) {
@@ -160,8 +166,8 @@ class DLMain private constructor(){
                     if (size > 0) {
                         this.forEach { key1 ->
                             log.onLog("钥匙：${key1.keyID}，${key1.vin}")
-                            log.onKey(key1)
                         }
+                        log.onKey(this)
                         key = this[0]
                     }
                 }
@@ -199,15 +205,15 @@ class DLMain private constructor(){
                 DLEngine.instance.disConnectBle {
                     if (result.flag == Constants.SUCCESS) {
                         Thread.sleep(2000)
-                        DLEngine.instance.syncKeys {
-                            logDL(it, "syncKeys")
-                            if (it.flag == Constants.SUCCESS) {
-                                DLICCEKey.parseKeys(it.data).apply {
+                        DLEngine.instance.syncKeys { dlResult ->
+                            logDL(dlResult, "syncKeys")
+                            if (dlResult.flag == Constants.SUCCESS) {
+                                DLICCEKey.parseKeys(dlResult.data).apply {
                                     if (size > 0) {
                                         this.forEach { key1 ->
                                             log.onLog("钥匙：${key1.keyID}，${key1.vin}")
-                                            log.onKey(key1)
                                         }
+                                        log.onKey(this)
                                         key = this[0]
                                         DLEngine.instance.selectKey(key!!.keyID) {
                                             logDL(it, "selectKey:${key!!.keyID}")
@@ -231,6 +237,7 @@ class DLMain private constructor(){
         key?.keyID?.let { keyId ->
             DLEngine.instance.revokeKey(keyId) {
                 logDL(it, "revokeKey")
+                disConnectBle()
             }
         }
     }
@@ -239,7 +246,7 @@ class DLMain private constructor(){
         key?.let { keyInfo ->
             val array = byteArrayOf(0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01)
             DLEngine.instance.shareKey(
-                ByteBuffer.wrap(array).int,
+                array,
                 TimeUtils.getTime(System.currentTimeMillis(), "yyyyMMdd'T'HHmmss'Z'"),
                 TimeUtils.getTime(
                     System.currentTimeMillis() + 60000L,
@@ -290,9 +297,9 @@ class DLMain private constructor(){
     }
 
     fun writeNFC(){
-        DLEngine.instance.writeNFC {
-            logDL(it, "writeNFC")
-        }
+//        DLEngine.instance.writeNFC {
+//            logDL(it, "writeNFC")
+//        }
     }
 
     fun logDL(
