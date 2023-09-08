@@ -43,7 +43,7 @@ fun Content() {
                 logList.clear()
             }
 //            logList.add("$info【${Thread.currentThread().name}】")
-            logList.add("$info")
+            logList.add(info)
         }
 
         override fun onKey(keys: List<DLICCEKey>) {
@@ -93,8 +93,11 @@ fun Content() {
                             .clickable { DLMain.instance.selectKey(it.keyID) }
                             .padding(10.dp)
                     ) {
+                        if (it.vin.contains(connectKey)) {
+                            Text(text = "$num ", color = Color.Green)
+                        }
                         if (it.vin.contains(connectKey) && connectKey.isNotEmpty()){
-                            Text(text = "$num 已连接   ", color = Color.Red)
+                            Text(text = "已连接   ", color = Color.Red)
                         }
                         if (selectKey == it.keyID){
                             Text(text = "已选择   ", color = Color.Green)
@@ -175,9 +178,9 @@ fun Content() {
                         DLMain.instance.setSelfCalibrationLevel()
                     }
 
-                    MyButton(msg = "writeNFC") {
-                        DLMain.instance.writeNFC()
-                    }
+//                    MyButton(msg = "writeNFC") {
+//                        DLMain.instance.writeNFC()
+//                    }
                 }
             }
 
