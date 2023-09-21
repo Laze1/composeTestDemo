@@ -54,6 +54,7 @@ class DLMain private constructor(){
             .setApplication(MyApplication.getInstance().applicationContext)//设置application引用
             .setDeviceFingerPrint(deviceFinger)//设置设备指纹16位
             .setURL(url) //后台服务器url
+            .setDebugLog(true)
             .build()
         DLEngine.instance.configureSDK(config)
         log.onLog("初始化SDK完成")
@@ -263,7 +264,7 @@ class DLMain private constructor(){
     }
 
     fun vehicleControl(){
-        DLEngine.instance.vehicleControl(1, 0) {
+        DLEngine.instance.vehicleControl(1, 0, 15000) {
             logDL(it, "vehicleControl")
         }
     }
